@@ -11,10 +11,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Refrences consulted while writing this code:
+// Refrences consulted:
 // TCG EFI Platform Specification For TPM Family 1.1 or 1.2 Specification Version 1.22 Revision 15
 // TCG EFI Protocol Specification, Family “2.0” Level 00 Revision 00.13
 // UNDERSTANDING THE TRUSTED BOOT CHAIN IMPLEMENTATION, Revision 1.0, December 2020
+// TCG Guidance on Integrity Measurements and Event Log Processing, Version 1.0 Revision 0.118
 
 type PcrYml struct {
 	HashAlgo map[string]map[int]string `yaml:"pcrs"`
@@ -95,8 +96,8 @@ func contentMatchesDigest(ev attest.Event) bool {
 }
 
 // preValidateEventLog validates the event log, makeing sure it meets the basic
-// security requirements, this must be called before any other validators like
-// grub validator.
+// security requirements, this must be called after event log verification
+// and before any other validators like grub validator.
 func preValidateEventLog(events []attest.Event, verbose bool) error {
 	Pcr7SeperatorSeen := false
 	for _, event := range events {
@@ -122,6 +123,11 @@ func preValidateEventLog(events []attest.Event, verbose bool) error {
 		// regardless of the event type.
 		et := event.Type.String()
 
+		// double check, content must match the digest
+		if !contentMatchesDigest(event) {
+			return fmt.Errorf("error %s digest mismatch", et)
+		}
+
 		// If the DMA protection is disabled or configured to a lower security
 		// state, then the platform shall measure the "DMA Protection Disabled"
 		// string with EV_EFI_ACTION.
@@ -138,7 +144,7 @@ func preValidateEventLog(events []attest.Event, verbose bool) error {
 		// This is a sanity check, EV_SEPARATOR is used to draw a line between
 		// the pre-boot environment and entering a post-boot environment.
 		// The data within the event field of the EV_SEPARATOR event MUST be a
-		//32-bit (double-word) of 0’s. We can use this value as a RIM, so we
+		//32-bit (double-word) of 0’s. We can use this value as a refrence, so we
 		// can actually validate the event data to trust the event type.
 		if et == "EV_SEPARATOR" {
 			// EV_SEPARATOR occurs only once in the flow.
@@ -152,11 +158,6 @@ func preValidateEventLog(events []attest.Event, verbose bool) error {
 
 			if string(event.Data) != "\x00\x00\x00\x00" {
 				return fmt.Errorf("error EV_SEPARATOR data is not 0x00000000")
-			}
-
-			// content must match the digest
-			if !contentMatchesDigest(event) {
-				return fmt.Errorf("error EV_SEPARATOR digest mismatch")
 			}
 
 			Pcr7SeperatorSeen = true
