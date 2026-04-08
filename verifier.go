@@ -16,7 +16,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"eve_pcr_prediction/internal/attest"
+	"github.com/zededa/evepcr/internal/attest"
 
 	"gopkg.in/yaml.v2"
 )

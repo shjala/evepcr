@@ -6,7 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	epcr "eve_pcr_prediction"
+	epcr "github.com/zededa/evepcr"
 	"flag"
 	"fmt"
 	"os"
