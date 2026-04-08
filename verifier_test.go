@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"eve_pcr_prediction/internal/attest"
+	"github.com/zededa/evepcr/internal/attest"
 )
 
 func TestPcrFive(t *testing.T) {
