@@ -6,10 +6,11 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	epcr "github.com/zededa/evepcr"
 	"flag"
 	"fmt"
 	"os"
+
+	epcr "github.com/zededa/evepcr"
 )
 
 func contains(m map[int][][]byte, key int, val []byte) bool {
@@ -161,11 +162,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := epcr.ValidateEventLogFromFile(*oldEventLog, *oldPcrValues); err != nil {
+	if err := epcr.VerifyEventLogFromFile(*oldEventLog, *oldPcrValues); err != nil {
+		fmt.Printf("Old event log verification failed: %v\n", err)
+		os.Exit(1)
+	}
+	if err := epcr.ValidateEventLogFromFile(*oldEventLog); err != nil {
 		fmt.Printf("Old event log validation failed: %v\n", err)
 		os.Exit(1)
 	}
-	if err := epcr.ValidateEventLogFromFile(*currEventLog, *currPcrValues); err != nil {
+	if err := epcr.VerifyEventLogFromFile(*currEventLog, *currPcrValues); err != nil {
+		fmt.Printf("Current event log verification failed: %v\n", err)
+		os.Exit(1)
+	}
+	if err := epcr.ValidateEventLogFromFile(*currEventLog); err != nil {
 		fmt.Printf("Current event log validation failed: %v\n", err)
 		os.Exit(1)
 	}
