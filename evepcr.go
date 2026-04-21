@@ -503,10 +503,10 @@ func ValidateEventLog(events []attest.Event, verbose bool) error {
 	return nil
 }
 
-// ValidateEventLogFromBytes verifies that the event log replays correctly against
+// VerifyEventLogFromBytes verifies that the event log replays correctly against
 // the provided PCR values (indexed by PCR index, SHA-256 digest as []byte).
 // Returns the parsed and verified events on success.
-func ValidateEventLogFromBytes(eventLogBytes []byte, pcrValues map[int][]byte) ([]attest.Event, error) {
+func VerifyEventLogFromBytes(eventLogBytes []byte, pcrValues map[int][]byte) ([]attest.Event, error) {
 	var attestPCRs []attest.PCR
 	for index, digest := range pcrValues {
 		attestPCRs = append(attestPCRs, attest.PCR{
@@ -526,6 +526,20 @@ func ValidateEventLogFromBytes(eventLogBytes []byte, pcrValues map[int][]byte) (
 		return nil, fmt.Errorf("event log replay failed: %w", err)
 	}
 
+	return events, nil
+}
+
+// ValidateEventLogFromBytes parses the event log and runs security validation
+// rules without verifying against PCR values.
+// Returns the parsed events on success.
+func ValidateEventLogFromBytes(eventLogBytes []byte) ([]attest.Event, error) {
+	eventLog, err := attest.ParseEventLog(eventLogBytes)
+	if err != nil {
+		return nil, fmt.Errorf("ParseEventLog failed: %w", err)
+	}
+
+	events := eventLog.Events(DefaultAlgo)
+
 	if err := ValidateEventLog(events, false); err != nil {
 		return nil, fmt.Errorf("event log validation failed: %w", err)
 	}
@@ -533,9 +547,9 @@ func ValidateEventLogFromBytes(eventLogBytes []byte, pcrValues map[int][]byte) (
 	return events, nil
 }
 
-// ValidateEventLogFromFile replays the event log at eventLogFile against the
-// PCR values in pcrYaml (YAML format), then runs the security validation rules.
-func ValidateEventLogFromFile(eventLogFile, pcrYaml string) error {
+// VerifyEventLogFromFile replays the event log at eventLogFile against the
+// PCR values in pcrYaml (YAML format) to verify integrity.
+func VerifyEventLogFromFile(eventLogFile, pcrYaml string) error {
 	attestPCRs, err := GetAttestedPCRs(pcrYaml)
 	if err != nil {
 		return fmt.Errorf("GetAttestedPCRs failed: %w", err)
@@ -552,13 +566,29 @@ func ValidateEventLogFromFile(eventLogFile, pcrYaml string) error {
 	}
 
 	// Reply the eventlog and check if end up with expected PCR values
-	events, err := eventLog.Verify(attestPCRs)
+	_, err = eventLog.Verify(attestPCRs)
 	if err != nil {
 		return fmt.Errorf("verify failed: %w", err)
 	}
 
-	// If we can trust the eventlog integrity, now we can validate the system
-	// state using custom rules.
+	return nil
+}
+
+// ValidateEventLogFromFile parses the event log at eventLogFile and runs
+// security validation rules without verifying against PCR values.
+func ValidateEventLogFromFile(eventLogFile string) error {
+	eventLogContent, err := os.ReadFile(eventLogFile)
+	if err != nil {
+		return fmt.Errorf("ReadFile failed: %w", err)
+	}
+
+	eventLog, err := attest.ParseEventLog(eventLogContent)
+	if err != nil {
+		return fmt.Errorf("ParseEventLog failed: %w", err)
+	}
+
+	events := eventLog.Events(DefaultAlgo)
+
 	if err := ValidateEventLog(events, false); err != nil {
 		return fmt.Errorf("validateEventLog failed: %w", err)
 	}
