@@ -15,7 +15,7 @@ $(ROOTFS_IMG):
 	curl -fsSL -o $@ $(ROOTFS_URL)
 
 test: $(ROOTFS_IMG)
-	go test -v ./...
+	go test -v -cover -covermode=atomic -coverprofile=coverage.out ./...
 
 clean:
 	rm -f $(ROOTFS_IMG)
